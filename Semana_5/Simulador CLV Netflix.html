@@ -1,0 +1,203 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Simulador CLV Netflix</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+/* Layout: controles a la izquierda, resultados y tornado a la derecha; una columna en celular.
+   Color: superficie neutra tibia, azul = valor base, naranja = escenario. Tipo: Plex Sans + Plex Mono para cifras. */
+:root{
+  --bg:#fcfcfb; --panel:#f4f3f0; --line:#dcdad4; --ink:#1b1b19; --ink2:#55534e; --ink3:#7b7870;
+  --base:#2a78d6; --alt:#eb6834; --good:#1b7a50; --bad:#b3401a; --track:#d9d7d0;
+  --font:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif; --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#1a1a19; --panel:#242422; --line:#3a3936; --ink:#f0efec; --ink2:#c3c2b7; --ink3:#9a988f;
+  --base:#3987e5; --alt:#d95926; --good:#4fc08a; --bad:#ef8660; --track:#4a4944; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1a1a19; --panel:#242422; --line:#3a3936; --ink:#f0efec; --ink2:#c3c2b7; --ink3:#9a988f;
+  --base:#3987e5; --alt:#d95926; --good:#4fc08a; --bad:#ef8660; --track:#4a4944; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.5;
+  padding-block:28px 44px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+h1{font-size:1.7rem;line-height:1.15;margin:0;font-weight:600;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--ink2);margin:6px 0 0;max-width:68ch}
+.presets{display:flex;flex-wrap:wrap;gap:8px}
+.presets button{font:inherit;font-size:.9rem;padding:8px 14px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;cursor:pointer}
+.presets button:hover{border-color:var(--base)}
+.presets button.on{border-color:var(--alt);box-shadow:inset 0 0 0 1px var(--alt)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--base);outline-offset:2px}
+.grid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:26px;align-items:start}
+@media (max-width:820px){.grid{grid-template-columns:minmax(0,1fr)}}
+.ctrl{background:var(--panel);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:16px}
+.ctrl h2,.res h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink2);margin:0;font-weight:600}
+.row label{display:flex;justify-content:space-between;gap:10px;font-size:.92rem}
+.row output{font-family:var(--mono);font-size:.92rem}
+.row small{display:block;color:var(--ink3);font-size:.78rem;margin-top:2px}
+input[type=range]{width:100%;accent-color:var(--base);margin:6px 0 0}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{border-top:2px solid var(--line);padding-top:10px}
+.kpi.main{border-top-color:var(--base)}
+.kpi span{display:block;font-size:.78rem;color:var(--ink2)}
+.kpi b{display:block;font-family:var(--mono);font-size:1.75rem;font-weight:500;line-height:1.2}
+.kpi i{font-style:normal;font-size:.8rem;color:var(--ink3)}
+.res{display:flex;flex-direction:column;gap:20px;min-width:0}
+.chartbox{background:var(--panel);border-radius:10px;padding:16px 16px 10px}
+.chartbox p{margin:4px 0 10px;color:var(--ink2);font-size:.88rem;max-width:70ch}
+svg{width:100%;height:auto;display:block;overflow:visible}
+svg text{fill:var(--ink2);font-family:var(--font);font-size:12px}
+svg .v{fill:var(--ink);font-family:var(--mono);font-size:12px}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th,td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left;white-space:normal;min-width:130px}
+th{color:var(--ink2);font-weight:500}
+td{font-family:var(--mono)}
+td:first-child{font-family:var(--font)}
+.note{font-size:.82rem;color:var(--ink3);max-width:80ch;margin:0}
+.btn2{font:inherit;font-size:.85rem;padding:7px 12px;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:8px;cursor:pointer;text-align:left}
+.btn2:hover{border-color:var(--base)}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>¿Cuánto vale cada palanca del CLV de Netflix?</h1>
+    <p class="sub">Punto de partida: cifras reales del reporte anual (10-K) de Netflix de 2019, el año del caso. Mueve una palanca y mira cómo cambian el CLV, el CAC y el retorno por cada dólar de marketing.</p>
+  </header>
+
+  <div class="presets" role="group" aria-label="Escenarios">
+    <button data-p="base" class="on">Netflix 2019 (10-K)</button>
+    <button data-p="reco">Mejor recomendación (menos churn)</button>
+    <button data-p="precio">Subir el precio 10%</button>
+    <button data-p="cac">Marketing 10% más eficiente</button>
+    <button data-p="madurez">Competencia: CAC +25%, churn +0.5 pt</button>
+  </div>
+
+  <div class="grid">
+    <section class="ctrl" aria-label="Palancas">
+      <h2>Palancas</h2>
+      <div class="row"><label for="ing">Ingreso por miembro al mes <output id="o_ing"></output></label>
+        <input id="ing" type="range" min="7" max="16" step="0.01"><small>10-K 2019: ingresos ÷ miembros promedio ÷ 12 = US$10.98</small></div>
+      <div class="row"><label for="cos">Costo de contenido y operación por miembro <output id="o_cos"></output></label>
+        <input id="cos" type="range" min="4" max="9" step="0.01"><small>10-K 2019: costo de ingresos ÷ miembros promedio ÷ 12 = US$6.78</small></div>
+      <div class="row"><label for="chu">Churn mensual (miembros que cancelan) <output id="o_chu"></output></label>
+        <input id="chu" type="range" min="0.5" max="6" step="0.05"><small>Netflix no lo publica. Supuesto de clase: 2.5%. Su artículo de 2015 habla de “un dígito bajo”.</small></div>
+      <div class="row"><label for="dis">Descuento mensual <output id="o_dis"></output></label>
+        <input id="dis" type="range" min="0" max="2" step="0.05"><small>0.8% al mes ≈ 10% al año.</small></div>
+      <div class="row"><label for="cac">CAC por miembro nuevo <output id="o_cac"></output></label>
+        <input id="cac" type="range" min="10" max="120" step="0.5"><small>10-K 2019: marketing US$2,652 M ÷ altas brutas estimadas.</small></div>
+      <button class="btn2" id="derivar">Derivar el CAC del 10-K con este churn</button>
+      <p class="note" id="deriv_txt"></p>
+    </section>
+
+    <section class="res" aria-live="polite">
+      <div>
+        <h2>Resultado</h2>
+        <div class="kpis" style="margin-top:10px">
+          <div class="kpi main"><span>CLV por miembro</span><b id="k_clv"></b><i id="k_clv_d"></i></div>
+          <div class="kpi"><span>CLV / CAC</span><b id="k_ratio"></b><i id="k_ratio_d"></i></div>
+          <div class="kpi"><span>Meses para recuperar el CAC</span><b id="k_pay"></b><i>margen mensual ≈ <span id="k_m" style="display:inline"></span></i></div>
+          <div class="kpi"><span>Vida esperada</span><b id="k_life"></b><i>1 ÷ churn</i></div>
+        </div>
+      </div>
+
+      <div class="chartbox">
+        <h2>Sensibilidad: ¿qué palanca mueve más el CLV/CAC?</h2>
+        <p>Cada barra cambia una sola palanca, de la posición actual, y deja el resto igual. Más larga significa más poder.</p>
+        <div style="overflow-x:auto"><svg id="tor" style="min-width:520px" viewBox="0 0 640 250" role="img" aria-label="Gráfico de tornado con el efecto de cada palanca sobre CLV/CAC"></svg></div>
+      </div>
+
+      <div class="chartbox">
+        <h2>Cifras reales de Netflix (10-K 2019)</h2>
+        <div class="tbl"><table>
+          <thead><tr><th></th><th>2017</th><th>2018</th><th>2019</th></tr></thead>
+          <tbody>
+            <tr><td>Ingresos (US$ M)</td><td>11,693</td><td>15,794</td><td>20,156</td></tr>
+            <tr><td>Marketing (US$ M)</td><td>1,436</td><td>2,369</td><td>2,652</td></tr>
+            <tr><td>Miembros pagos al cierre (M)</td><td>110.6</td><td>139.3</td><td>167.1</td></tr>
+            <tr><td>Altas netas (M)</td><td>21.6</td><td>28.6</td><td>27.8</td></tr>
+            <tr><td>Margen mensual por miembro</td><td>$3.07</td><td>$3.90</td><td>$4.20</td></tr>
+            <tr><td>CAC “aparente” (marketing ÷ altas netas)</td><td>$67</td><td>$83</td><td>$95</td></tr>
+          </tbody></table></div>
+        <p class="note" style="margin-top:10px">El CAC aparente usa solo las altas netas y engaña, porque ignora a quienes cancelaron y fueron reemplazados. Al sumar las bajas (supuesto de 2.5% mensual) las altas brutas de 2019 pasan de 27.8 M a unos 73.7 M y el CAC baja a cerca de US$36.</p>
+      </div>
+    </section>
+  </div>
+
+  <p class="note">CLV = margen mensual × r ÷ (1 + d − r), con r = 1 − churn. Es la fórmula de clase, que supone un churn constante. El margen es una aproximación (ingresos menos costo de ingresos), sin tecnología ni administración. Con fines didácticos.</p>
+</div>
+
+<script>
+const D={ing:10.98,cos:6.78,chu:2.5,dis:0.8,cac:36};
+const MKT=2652.462, NETAS=27.831, PROM=152.984;
+const PRE={
+  base:{...D},
+  reco:{...D,chu:2.0},
+  precio:{...D,ing:D.ing*1.10,chu:3.0},
+  cac:{...D,cac:D.cac*0.9},
+  madurez:{...D,cac:D.cac*1.25,chu:3.0}
+};
+const ids=['ing','cos','chu','dis','cac'];
+const el=Object.fromEntries(ids.map(i=>[i,document.getElementById(i)]));
+const fmt={ing:v=>'US$'+(+v).toFixed(2),cos:v=>'US$'+(+v).toFixed(2),chu:v=>(+v).toFixed(2)+'%',dis:v=>(+v).toFixed(2)+'%',cac:v=>'US$'+(+v).toFixed(1)};
+function calc(s){
+  const m=s.ing-s.cos, r=1-s.chu/100, d=s.dis/100;
+  const clv=m*r/(1+d-r);
+  return {m,clv,ratio:clv/s.cac,pay:s.cac/m,life:100/s.chu};
+}
+function cur(){return Object.fromEntries(ids.map(i=>[i,+el[i].value]))}
+const BASE=calc(D);
+function render(){
+  const s=cur(), c=calc(s);
+  ids.forEach(i=>document.getElementById('o_'+i).textContent=fmt[i](s[i]));
+  const $=id=>document.getElementById(id);
+  $('k_clv').textContent='US$'+c.clv.toFixed(0);
+  const dc=(c.clv/BASE.clv-1)*100; $('k_clv_d').textContent=(dc>=0?'+':'')+dc.toFixed(1)+'% vs. base';
+  $('k_ratio').textContent=c.ratio.toFixed(2)+'×';
+  const dr=(c.ratio/BASE.ratio-1)*100; $('k_ratio_d').textContent=(dr>=0?'+':'')+dr.toFixed(1)+'% vs. base';
+  $('k_pay').textContent=c.pay.toFixed(1)+' m'; $('k_m').textContent='US$'+c.m.toFixed(2);
+  $('k_life').textContent=c.life.toFixed(0)+' m';
+  tornado(s,c);
+}
+function tornado(s,c){
+  const lev=[
+    {n:'Churn ∓0.5 pt',lo:{...s,chu:s.chu+0.5},hi:{...s,chu:Math.max(0.3,s.chu-0.5)}},
+    {n:'Ingreso por miembro ±10%',lo:{...s,ing:s.ing*0.9},hi:{...s,ing:s.ing*1.1}},
+    {n:'Costo por miembro ∓5%',lo:{...s,cos:s.cos*1.05},hi:{...s,cos:s.cos*0.95}},
+    {n:'CAC ∓10%',lo:{...s,cac:s.cac*1.1},hi:{...s,cac:s.cac*0.9}},
+    {n:'Descuento ∓0.4 pt',lo:{...s,dis:s.dis+0.4},hi:{...s,dis:Math.max(0,s.dis-0.4)}}
+  ].map(l=>({...l,a:calc(l.lo).clv/l.lo.cac,b:calc(l.hi).clv/l.hi.cac}));
+  lev.sort((x,y)=>Math.abs(y.b-y.a)-Math.abs(x.b-x.a));
+  const W=640,L=180,R=630,H=250,top=14,rowH=42;
+  const vals=lev.flatMap(l=>[l.a,l.b,c.ratio]);
+  const span=Math.max(...vals.map(v=>Math.abs(v-c.ratio)),0.05);
+  const x=v=>L+(R-L)/2+(v-c.ratio)/span*((R-L)/2-48);
+  let g=`<line x1="${x(c.ratio)}" x2="${x(c.ratio)}" y1="${top-6}" y2="${top+rowH*lev.length}" stroke="var(--ink3)" stroke-width="1"/>`;
+  lev.forEach((l,i)=>{
+    const y=top+i*rowH+8, h=22;
+    const lo=Math.min(l.a,l.b), hi=Math.max(l.a,l.b);
+    g+=`<text x="${L-12}" y="${y+h/2+4}" text-anchor="end">${l.n}</text>`;
+    g+=`<rect x="${x(lo)}" y="${y}" width="${Math.max(2,x(c.ratio)-x(lo))}" height="${h}" rx="3" fill="var(--alt)"/>`;
+    g+=`<rect x="${x(c.ratio)}" y="${y}" width="${Math.max(2,x(hi)-x(c.ratio))}" height="${h}" rx="3" fill="var(--base)"/>`;
+    g+=`<text class="v" x="${x(lo)-6}" y="${y+h/2+4}" text-anchor="end">${lo.toFixed(2)}</text>`;
+    g+=`<text class="v" x="${x(hi)+6}" y="${y+h/2+4}" text-anchor="start">${hi.toFixed(2)}</text>`;
+  });
+  g+=`<text x="${x(c.ratio)}" y="${top+rowH*lev.length+16}" text-anchor="middle">hoy: ${c.ratio.toFixed(2)}×</text>`;
+  g+=`<g transform="translate(${L},${top+rowH*lev.length+30})"><rect width="12" height="12" rx="2" fill="var(--alt)"/><text x="18" y="10">peor</text><rect x="70" width="12" height="12" rx="2" fill="var(--base)"/><text x="88" y="10">mejor</text></g>`;
+  const t=document.getElementById('tor'); t.setAttribute('viewBox',`0 0 ${W} ${top+rowH*lev.length+50}`); t.innerHTML=g;
+}
+function load(p){ids.forEach(i=>el[i].value=p[i]);render()}
+ids.forEach(i=>el[i].addEventListener('input',()=>{document.querySelectorAll('.presets button').forEach(b=>b.classList.remove('on'));render()}));
+document.querySelectorAll('.presets button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.presets button').forEach(x=>x.classList.remove('on'));b.classList.add('on');load(PRE[b.dataset.p]);}));
+document.getElementById('derivar').addEventListener('click',()=>{
+  const ch=+el.chu.value/100, brutas=NETAS+PROM*ch*12, cac=MKT/brutas;
+  el.cac.value=Math.min(120,Math.max(10,cac)); document.getElementById('deriv_txt').textContent=
+    `Con churn de ${(ch*100).toFixed(2)}%: altas brutas = ${NETAS.toFixed(1)} + ${PROM.toFixed(1)} × ${(ch*100).toFixed(2)}% × 12 = ${brutas.toFixed(1)} M. CAC = 2,652 ÷ ${brutas.toFixed(1)} = US$${cac.toFixed(1)}.`;
+  render();});
+load(PRE.base);
+</script>
+
+</body></html>
