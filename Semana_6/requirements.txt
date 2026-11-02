@@ -1,5 +1,6 @@
-streamlit
+streamlit>=1.50
 pandas
 numpy
-nltk
 scikit-learn
+plotly
+kmodes
